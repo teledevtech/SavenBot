@@ -1,12 +1,11 @@
 from aiogram import Bot, Dispatcher
 import asyncio
-from Key import KEY
 import logging
 from handlers import router
 
 
 async def main():
-    bot = Bot(token=KEY)
+    bot = Bot(token="7974222861:AAGHeOq7wWQiYmhR_XJnRYaCHMLv-iofSf4")
     await bot.delete_webhook(drop_pending_updates=True)
 
     dp = Dispatcher()

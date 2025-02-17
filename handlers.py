@@ -1,12 +1,10 @@
-from aiogram import F, Router, Bot, types
-from aiogram.filters import CommandStart, Command, StateFilter
-from aiogram.types import Message, CallbackQuery, Dice
-from aiogram.fsm.state import StatesGroup, State
+from aiogram import F, Router
+from aiogram.filters import CommandStart
+from aiogram.types import Message, CallbackQuery
 import Keyboards as kb
 from aiogram.utils.keyboard import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
-
-from StomdiscontBot.bot.db import get_item
+from StomdiscontBot.bot.db import get_item, get_name
 
 router = Router()
 
@@ -20,7 +18,7 @@ async def StartButton(message:Message):
 
 @router.message(F.text == 'Каталог')
 async def Catalog_button(message:Message):
-    await message.answer("Выберите категорию товара", reply_markup=await kb.categories())
+    await message.answer("Выберите категорию товара", reply_markup=kb.categories())
 
 
 @router.callback_query(F.data.startswith('category_'))
@@ -28,8 +26,10 @@ async def category(callback: CallbackQuery, state: FSMContext):
     try:
         category_id = callback.data.split('_')[1]
         await callback.answer('Вы выбрали категорию')
-        await state.update_data(basket={})
-        await callback.message.answer('Выберите товар по категории', reply_markup=await kb.items(category_id))
+        ud = await state.get_data()
+        if "basket" not in ud:
+            await state.update_data(basket={})
+        await callback.message.edit_text('Выберите товар по категории', reply_markup=kb.items(category_id))
     except Exception as e:
         await callback.answer(f"Ошибка: {e}")
         print(f"Exception in category handler: {e}")
@@ -37,11 +37,13 @@ async def category(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == 'back')
 async def to_back_page(callback:CallbackQuery, state: FSMContext):
-    await callback.message.edit_text('Выберите категорию товара', reply_markup=await kb.categories())
+    await callback.message.edit_text('Выберите категорию товара', reply_markup=kb.categories())
 
 
 @router.callback_query(F.data == 'to_main')
 async def to_main_page(callback:CallbackQuery):
+    await callback.answer()
+    await callback.message.delete()
     await callback.message.answer("""Stomdiscont\n
     Стоматологические товары по низким ценам
     """, reply_markup=kb.main)
@@ -61,27 +63,33 @@ async def category(callback: CallbackQuery):
     )
 
     await callback.message.edit_text(
-        f'Название: {item_data.name}\nОписание: {item_data.description}\nЦена: {item_data.price}р',
+        f'Название: {item_data[1]}\nОписание: {item_data[2]}\nЦена: {item_data[3]}р',
         reply_markup=add_to_basket
     )
 
 
 @router.callback_query(F.data.startswith('add_basket'))
 async def add_basket_b(callback:CallbackQuery, state: FSMContext):
-    item_id = F.data.split("-")[1]
+    item_id = callback.data.split("-")[1]
     ud = await state.get_data()
-    if item_id in ud["category_id"]:
-        await state.update_data(basket=ud["basket"])
-        ud["basket"][item_id] += 1
+    bskt = ud["basket"]
+    if item_id in ud["basket"]:
+        bskt[item_id] += 1
     else:
-        ud["basket"][item_id] = 1
-
+        bskt[item_id] = 1
+    await state.update_data(basket=bskt)
+    backet = ""
+    for i_b in bskt:
+        backet += f"{bskt[i_b]} x {get_name(i_b)}\n"
     await callback.answer('Товар в корзине!')
-    await callback.message.edit_text('Выберите категорию товара', reply_markup=kb.main)
+    await callback.message.delete()
+    await callback.message.answer(f'Выберите категорию товара\n\n{backet}', reply_markup=kb.main_after)
 
 
-
-
+@router.message(F.text == "Очистить корзину")
+async def clear_bascket(message: Message, state: FSMContext):
+    await state.clear()
+    await message.answer("Корзина очищена", reply_markup=kb.main)
 
 
 
