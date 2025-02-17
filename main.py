@@ -5,7 +5,7 @@ from handlers import router
 
 
 async def main():
-    bot = Bot(token="7974222861:AAGHeOq7wWQiYmhR_XJnRYaCHMLv-iofSf4")
+    bot = Bot(token=TELEGRAM_BOT_TOKEN) # импортируй токен бота или вставь его вместо TELEGRAM_BOT_TOKEN
     await bot.delete_webhook(drop_pending_updates=True)
 
     dp = Dispatcher()
